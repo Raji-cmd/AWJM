@@ -1,0 +1,115 @@
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.model_selection import learning_curve
+from sklearn.ensemble import VotingRegressor, RandomForestRegressor
+from sklearn.linear_model import Ridge, ElasticNet
+from sklearn.svm import SVR
+from sklearn.neural_network import MLPRegressor
+
+surface_data = {
+    'Exp.value': [4.75, 3.09, 4.46, 5.02, 3.84, 5.04, 4.38, 4.61, 4.14, 3.50,
+                  3.97, 4.63, 5.56, 3.62, 4.08, 4.75, 4.46, 4.41, 3.42, 4.27,
+                  4.67, 5.36, 3.29, 4.46, 4.53, 5.23, 3.80],
+    'Ridge': [4.49, 3.37, 4.34, 5.03, 3.98, 4.96, 4.26, 4.70, 3.85, 3.65,
+              4.33, 4.42, 5.64, 3.72, 4.35, 4.67, 4.34, 4.25, 3.38, 4.19,
+              4.43, 5.30, 3.37, 4.34, 4.69, 5.31, 3.99],
+    'RandomForest': [4.85, 3.44, 4.47, 4.86, 3.81, 5.01, 4.37, 4.66, 3.94, 3.62,
+                     3.93, 4.56, 5.44, 3.57, 4.27, 4.67, 4.47, 4.42, 3.47, 4.33,
+                     4.59, 5.29, 3.39, 4.47, 4.53, 5.19, 3.77],
+    'ElasticNet': [4.46, 3.60, 4.34, 4.90, 3.99, 4.95, 4.29, 4.69, 3.90, 3.79,
+                   4.21, 4.39, 5.37, 3.73, 4.47, 4.63, 4.34, 4.29, 3.53, 4.22,
+                   4.39, 5.16, 3.52, 4.34, 4.68, 5.17, 4.00],
+    'SVR': [4.73, 3.19, 4.51, 4.92, 3.94, 4.94, 4.32, 4.51, 4.04, 3.60,
+            4.07, 4.61, 5.46, 3.72, 4.04, 4.85, 4.51, 4.32, 3.52, 4.20,
+            4.62, 5.26, 3.39, 4.51, 4.43, 5.13, 3.90],
+    'Ensemble': [4.65, 3.40, 4.42, 4.91, 3.93, 4.96, 4.32, 4.63, 3.95, 3.67,
+                 4.12, 4.51, 5.45, 3.69, 4.27, 4.71, 4.42, 4.32, 3.49, 4.24,
+                 4.52, 5.24, 3.43, 4.42, 4.57, 5.18, 3.91]
+}
+
+mrr_data = {
+    'Exp.value': [119.98, 126.36, 122.4, 111.57, 126.63, 97.63, 121.6, 109.81, 137.08, 117.28,
+                  143.3, 125.7, 106.95, 148.41, 102.02, 115.2, 122.4, 119.69, 145.92, 131.74,
+                  132.71, 99.7, 140.98, 122.4, 104.26, 103.66, 139.85],
+    'Ridge': [120.20, 126.70, 122.19, 117.72, 130.56, 94.96, 121.22, 113.82, 134.08, 126.66,
+              141.46, 123.17, 109.76, 149.42, 102.93, 114.27, 122.19, 119.47, 145.52, 124.18,
+              124.92, 98.87, 138.53, 122.19, 106.83, 105.86, 137.55],
+    'RandomForest': [120.95, 129.90, 122.37, 110.20, 127.90, 99.32, 121.86, 109.28, 132.74, 121.52,
+                     141.69, 124.35, 107.29, 145.93, 103.14, 109.61, 122.37, 120.24, 144.43, 128.74,
+                     128.68, 100.53, 136.81, 122.37, 104.26, 105.85, 139.48],
+    'ElasticNet': [120.26, 126.65, 122.19, 117.66, 130.47, 95.53, 121.25, 113.91, 133.89, 126.72,
+                   141.12, 123.13, 109.93, 148.85, 103.26, 114.39, 122.19, 119.53, 145.10, 124.12,
+                   124.85, 99.28, 138.20, 122.19, 107.01, 106.18, 137.37],
+    'SVR': [120.08, 126.26, 124.15, 111.67, 126.53, 101.68, 121.50, 109.91, 136.98, 117.38,
+            133.90, 125.60, 107.57, 136.78, 107.07, 113.51, 124.15, 119.79, 134.81, 127.04,
+            127.19, 104.16, 133.05, 124.15, 107.34, 105.90, 131.03],
+    'Ensemble': [120.37, 127.35, 122.82, 114.01, 128.66, 98.24, 121.47, 111.54, 134.56, 122.61,
+                 139.15, 124.18, 108.54, 144.58, 104.32, 112.91, 122.82, 119.77, 141.91, 126.16,
+                 126.52, 100.99, 136.36, 122.82, 106.39, 105.97, 136.02]
+}
+
+kerf_data = {
+    'Exp.value': [2.08, 1.44, 1.98, 2.25, 1.75, 2.25, 1.95, 2.09, 1.83, 1.59,
+                  1.86, 2.04, 2.57, 1.64, 1.86, 2.15, 1.98, 1.96, 1.52, 1.93,
+                  2.05, 2.43, 1.48, 1.98, 2.08, 2.34, 1.73],
+    'Ridge': [2.02, 1.51, 1.95, 2.27, 1.80, 2.23, 1.91, 2.10, 1.73, 1.64,
+              1.96, 2.00, 2.55, 1.68, 1.95, 2.10, 1.95, 1.92, 1.51, 1.88,
+              1.99, 2.40, 1.52, 1.95, 2.12, 2.38, 1.79],
+    'RandomForest': [2.14, 1.54, 1.98, 2.19, 1.75, 2.27, 1.95, 2.10, 1.76, 1.64,
+                     1.83, 2.02, 2.49, 1.61, 1.95, 2.11, 1.98, 1.97, 1.55, 1.95,
+                     2.02, 2.41, 1.54, 1.98, 2.08, 2.34, 1.71],
+    'ElasticNet': [1.99, 1.73, 1.95, 2.14, 1.81, 2.22, 1.94, 2.10, 1.79, 1.77,
+                   1.84, 1.96, 2.29, 1.69, 2.07, 2.07, 1.95, 1.95, 1.65, 1.92,
+                   1.96, 2.26, 1.66, 1.95, 2.11, 2.25, 1.80],
+    'SVR': [2.07, 1.54, 1.96, 2.15, 1.85, 2.15, 1.89, 1.99, 1.73, 1.69,
+            1.96, 2.02, 2.47, 1.74, 1.86, 2.13, 1.96, 1.89, 1.62, 1.84,
+            2.02, 2.33, 1.58, 1.96, 1.98, 2.24, 1.83],
+    'Ensemble': [2.06, 1.59, 1.96, 2.17, 1.81, 2.21, 1.92, 2.07, 1.75, 1.69,
+                 1.89, 2.00, 2.43, 1.68, 1.96, 2.10, 1.96, 1.93, 1.59, 1.90,
+                 2.00, 2.34, 1.59, 1.96, 2.07, 2.29, 1.78]
+}
+
+
+# === Function to plot learning curve ===
+def plot_learning_curve(data, title, ylabel):
+    X = np.column_stack([data['Ridge'], data['RandomForest'], data['ElasticNet'], data['SVR']])
+    y = np.array(data['Exp.value'])
+
+    ridge = Ridge()
+    rf = RandomForestRegressor(random_state=0)
+    enet = ElasticNet()
+    svr = SVR()
+    nn = MLPRegressor(random_state=0, max_iter=1000)
+
+    ensemble = VotingRegressor([('ridge', ridge), ('rf', rf), ('enet', enet), ('svr', svr)])
+
+    train_sizes, train_scores, test_scores = learning_curve(
+        ensemble, X, y, cv=5, scoring="neg_mean_squared_error",
+        train_sizes=np.linspace(0.2, 1.0, 5), n_jobs=-1
+    )
+
+    train_scores_mean = -np.mean(train_scores, axis=1)
+    train_scores_std = np.std(train_scores, axis=1)
+    test_scores_mean = -np.mean(test_scores, axis=1)
+    test_scores_std = np.std(test_scores, axis=1)
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(train_sizes, train_scores_mean, 'o-', color='r', label='Training Score')
+    plt.plot(train_sizes, test_scores_mean, 'o-', color='g', label='Cross-validation Score')
+    plt.fill_between(train_sizes, train_scores_mean-train_scores_std,
+                     train_scores_mean+train_scores_std, alpha=0.1, color='r')
+    plt.fill_between(train_sizes, test_scores_mean-test_scores_std,
+                     test_scores_mean+test_scores_std, alpha=0.1, color='g')
+    plt.xlabel("Training Examples", fontsize=14, fontweight='bold')
+    plt.ylabel(ylabel, fontsize=14, fontweight='bold')
+    plt.title(f"Learning Curve - Ensemble {title}", fontsize=16, fontweight='bold')
+    plt.legend(loc="best", fontsize=12)
+    plt.xticks(fontsize=12, fontweight='bold')
+    plt.yticks(fontsize=12, fontweight='bold')
+    plt.grid(True, alpha=0.3)
+    plt.show()
+
+# === Run for 3 datasets ===
+plot_learning_curve(surface_data, "Surface Roughness", "Mean Squared Error")
+plot_learning_curve(mrr_data, "Material Removal Rate", "Mean Squared Error")
+plot_learning_curve(kerf_data, "Kerf", "Mean Squared Error")
